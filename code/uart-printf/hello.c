@@ -3,7 +3,6 @@
 #include "timer.h"
 #include "uart.h"
 
-
 volatile unsigned int *FSEL2 = (unsigned int *)0x20200008;
 
 void main (void)
