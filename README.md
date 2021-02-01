@@ -6,6 +6,13 @@ toc: true
 readings: |
   [Prelab](/labs/lab3/#prelab-preparation) to prep before lab.
 ---
+
+<script>
+$().ready(function() {
+    var elems = document.getElementsByClassName('language-terminal');
+    for (const elem of elems) elem.className += ' terminal-gdb';
+});
+</script>
 {% comment %}
 Task list to copy/paste when creating PR for this lab:
 
@@ -33,39 +40,32 @@ Simulation mode is also a good way to learn more about how the ARM processor exe
 - Implement a few simple C-string operations and use a combination of
 unit testing and gdb simulation to debug your work.
 
-These are all very useful background work for you next assignment, implementing a `printf` library.
+These exercises are useful preparation for your next assignment which is to implement `printf` for your Pi.
 
 ## Prelab preparation
 To prepare for lab, do the following: 
 
-1. Read our [guide to using gdb in simulation mode](/guides/gdb).
+1. Read our [guide to using gdb in simulation mode](/guides/gdb). Print out a copy of the [gdb reference card](/readings/gdb-refcard.pdf) to have on hand.
 1. Review this [recap of stack frames](stack/).
 1. Pull the latest version of the `cs107e.github.io` courseware repository. 
 1. Clone the lab repository `https://github.com/cs107e/lab3`.
 
 ## Lab exercises
-Find a buddy (or two) to join up in a breakout room with. Show off your clock 
-breadboards to each other. Pull up the [check in questions](checkin). You're 
-ready to go!
+Grab a buddy (or two) and join an open lab table. Show off your clock 
+breadboards to each other and regale each other with tales of chasing the red and green lights of testing.
 
 ### 1. Debugging with gdb
 
-The goal of the first exercise 
-is to practice using the `gdb` debugger in ARM simulation mode.
-The debugger allows you to observe and manipulate a running program. Using this 
-tool will teach you more about how ARM instructions are executed and allow you 
-to debug your programs. When you are debugging bare metal code,
-there's a way to hook up `gdb` to a live processor using a hardware connection
-called JTAG: this requires some special hardware, though, so in this class
-we will stick with using `gdb` to test our code in simulation and rely on
-`printf` to debug on the Pi.
+This first exercise  is to practice using the `gdb` debugger in ARM simulation mode.
+A debugger allows you to observe and manipulate a running program and its program state. To debug bare metal program executing on remote processor requires a complicated setup and special hardware (JTAG), so in this class we use `gdb` on our local computer to test our program running in simulation and revert to simple use of
+`printf` to debug when actually running on the Pi.
 
 `gdb` is an amazingly powerful and useful tool. When debugging C code,
 proficiency with `gdb` can improve your debugging speed by a factor of 10,
 or in the hands of an expert, a factor of 100. It gives you complete
 visibility into a program: if you know where to look, you can find out
-exactly what is happening and what your bug is. Mastering it is just
-as important as mastering your text editor.
+exactly what is happening and what your bug is. Mastering the debugger is just
+as important as mastering your editor and compiler.
 
 #### 1a) Use `gdb` in simulation mode
 
@@ -78,43 +78,27 @@ not the raw binary file that we have been running on the actual Pi.
 
 Run gdb on `simple.elf`. 
 
-
-```
+```console?prompt=(gdb),$
 $ arm-none-eabi-gdb simple.elf
-GNU gdb (GDB) 7.8.1
-Copyright (C) 2014 Free Software Foundation, Inc.
+GNU gdb (GDB) 9.2
        ... blah blah blah ...
-+++ CS107E local .gdbinit successfully loaded +++
 (gdb) 
 ```
 
-When started, gdb displays several lines of output, unfortunately that chatter can obscure warnings or errors buried in there that may require attention.
-
-On Mac, you may get warnings about missing Python gdb modules; these warnings can be ignored. 
-
-On WSL, you may get a warning about "gdbinit auto-loading declined"; this situation requires action on your part to resolve. Follow these steps:
-- Use `quit` to exit gdb. 
-- Open the text file `~/.gdbinit` in your editor. Append the line below verbatim:
-
-        set auto-load safe-path /
-- Save the file and exit your editor. 
-- Run gdb again. The previous warning should be gone and instead you see the message "CS107E local .gdbinit successfully loaded" in its place.
-- You will only need to make this edit once, gdb is now configured for all time.
-
 Within `gdb`, connect to the simulator and load the program:
 
-```
+```console?prompt=(gdb)
 (gdb) target sim
 Connected to the simulator.
 (gdb) load
-Loading section .text, size 0x188 vma 0x8000
+Loading section .text, size 0x180 vma 0x8000
 Start address 0x8000
-Transfer rate: 3136 bits in <1 sec.
+Transfer rate: 3072 bits in <1 sec.
 ```
 
 Set a *breakpoint* on the `main` function and start executing the program:
 
-```
+```console?prompt=(gdb)
 (gdb) break main
 Breakpoint 1 at 0x80e4: file simple.c, line 35.
 (gdb) run
@@ -127,10 +111,10 @@ the next line of C source.
 The command `print d` shows the value of `d`
 after the call completes. 
 
-```
+```console?prompt=(gdb)
 Breakpoint 1, main () at simple.c:35
 35 {
-(gb) next
+(gdb) next
 38      int d = diff(x, y);
 (gdb) next
 39      int f = factorial(7);
@@ -153,7 +137,7 @@ which may be in a different function.
 Use `run` to restart the program
 and then use `step` you hit the breakpoint.
 
-```
+```console?prompt=(gdb)
 (gdb) run
 The program being debugged has been started already.
 Start it from the beginning? (y or n) y
@@ -161,38 +145,41 @@ Start it from the beginning? (y or n) y
 Breakpoint 1, main () at simple.c:35
 35	{
 (gdb) step
-38      int d = diff(x, y);
+38        int d = diff(x, y);
 (gdb) step
 diff (a=a@entry=33, b=b@entry=107) at simple.c:31
-31      return abs(a - b);
+31        return abs(a - b);
 ```
 
 Execution has stepped into `diff` and is stopped at the first line of the function.  Another `step` from here will step into the call to the `abs` function.
 
-```
+```console?prompt=(gdb)
 (gdb) step
-abs (v=v@entry=-74) at simple.c:9
+abs (v=v@entry=-74) at simple.c:8
+8         return result;
 9   }
 ```
 
 When using stepping through code, gdb displays the single next line of code to be executed. To see more context, use the `list` command
-```
+```console?prompt=(gdb)
 (gdb) list
-4   int abs(int v)
-5   {
-6       int result = v < 0 ? -v : v;
-7       return result;
-8   }
-9 
-10  int factorial(int n)
-11  {
-12      if (n <= 1)
-13          return 1;
+4
+5   int abs(int v)
+6   {
+7       int result = v < 0 ? -v : v;
+8       return result;
+9   }
+10 
+11  int factorial(int n)
+12  {
 ```
 
-Use `continue` to resume executing the program. While the program is executing, type `Control-c` to interrupt the running program and return control to gdb. Use the `backtrace` command to see where the program was executing when it was interrupted (ok to ignore the Python exception about frames on Mac):
+Use `continue` to resume executing the program. While the program is executing, type `Control-c` to interrupt the running program and return control to gdb. Use the `backtrace` command to see where the program was executing when it was interrupted:
 
-```^C
+```console?prompt=(gdb)
+(gdb) continue
+Continuing.
+^C
 Program received signal SIGINT, Interrupt.
 0x0000800c in hang ()
 (gdb) backtrace
@@ -218,28 +205,29 @@ If you didn't get a chance to do the pre-lab reading, review this recap on [stac
 There are gdb commands that allow you to drop down to the assembly instructions and view the contents of registers and memory.  Let's try them out!
 
 Use `delete` to delete any existing breakpoints and set a breakpoint at the `diff` function:
+```console?prompt=(gdb)
+(gdb) delete
+Delete all breakpoints? (y or n) y
+(gdb) break diff
+Breakpoint 2 at 0x80c4: file simple.c, line 30.
+(gdb) run
+Breakpoint 2, diff (a=a@entry=33, b=b@entry=107) at simple.c:30
+```
 
-    (gdb) delete
-    Delete all breakpoints? (y or n) y
-    (gdb) break diff
-    Breakpoint 2 at 0x80c4: file simple.c, line 30.
-    (gdb) run
-    Breakpoint 2, diff (a=a@entry=33, b=b@entry=107) at simple.c:30
-
-We asked for a breakpoint on the function `diff` and gdb converted our request to `0x80c4` which corresponds to the address of the first instruction of `diff`. A breakpoint set at _0xAddr_ will stop the program just before executing the
-instruction at _0xAddr_. 
+We asked for a breakpoint on the function `diff` and gdb converted our request to `0x80c4` which corresponds to the address of the first instruction of `diff`. A breakpoint set at `0xAddr` will stop the program just before executing the
+instruction at `0xAddr`. 
 
 The command `disassemble` with no arguments lists the ARM instructions in the context where the program is currently executing. The instruction marked `=>`is the next one to be executed.
     
-```
+```console?prompt=(gdb)
 (gdb) disassemble
 Dump of assembler code for function diff:
 => 0x000080c4 <+0>:     mov r12, sp
    0x000080c8 <+4>:     push {r11, r12, lr, pc}
-   0x000080cc <+8>:     sub r11, r12, #4
-   0x000080d0 <+12>:    rsb r0, r1, r0
+   0x000080cc <+8>:     sub r11, r12, #4, 0
+   0x000080d0 <+12>:    sub r0, r0, r1
    0x000080d4 <+16>:    bl  0x8010 <abs>
-   0x000080d8 <+20>:    sub sp, r11, #12
+   0x000080d8 <+20>:    sub sp, r11, #12, 0
    0x000080dc <+24>:    ldm sp, {r11, sp, lr}
    0x000080e0 <+28>:    bx  lr
 ```
@@ -247,14 +235,14 @@ Note that the first instruction of `diff` is at
 address `0x80c4`, as we expected.
 
 Use the command `info reg` to display all of the current registers.
-```
+```console?prompt=(gdb)
 (gdb) info reg
 r0             0x21 33
 r1             0x6b 107
 r2             0x8180   33152
 r3             0x8180   33152
-r4             0x0  0
-r5             0x4a 74
+r4             0x4a 74
+r5             0x0  0
 r6             0x0  0
 r7             0x0  0
 r8             0x0  0
@@ -265,20 +253,20 @@ r12            0x7fffff0    134217712
 sp             0x7ffffd8    0x7ffffd8
 lr             0x80fc   33020
 pc             0x80c4   0x80c4 <diff>
-cpsr           0x60000013   1610612755
+cpsr           0x600000d3   1610612947
 ```
 What value is currently in `r0`? Why does `r0` contain that value? (Consider: at what point in the program execution are we stopped right now? What was the last use of `r0`?)
 
 You can access a single
 register by using the syntax $regname, e.g. `$r0`.
 
-```
+```console?prompt=(gdb)
 (gdb) print $r0
 $2 = 33
 ```
 
 Print the `$lr` register to see the value currently stored.  What is that value? Disassemble that address, what code does it show you? 
-```
+```console?prompt=(gdb)
 (gdb) print/x $lr
 $5 = 0x80fc
 (gdb) disassemble $lr
@@ -287,13 +275,13 @@ $5 = 0x80fc
 `gdb` has a very useful feature to auto-display the current value of an expression every time you single-step.
 This is done with the `display` command.
 The command `display/4wx $sp` will auto-display a sequence of 4 words (w) in hex (x) beginning at the memory location pointed by the current `sp`. gdb will re-display that expression again after each gdb command.
-
-    (gdb) display/4wx $sp
-    1: x/4xw $sp
-    0x7ffffd8:  0x00000000  0x00000000  0x07fffffc  0x07fffff0
-    (gdb) step
-    0x7ffffc8:  0x07ffffec  0x07ffffd8  0x000080fc  0x000080d0
-
+```console?prompt=(gdb)
+(gdb) display/4wx $sp
+1: x/4xw $sp
+0x7ffffd8:  0x0000004a  0x00000000  0x07fffffc  0x07fffff0
+(gdb) step
+0x7ffffc8:  0x07ffffec  0x07ffffd8  0x000080fc  0x000080d0
+```
 
 The values printed each time are the four values topmost on the stack. As you being executing in `diff`, a `push` instruction placed these four values onto the stack. Examine the disassembly for `diff` to see which four registers are pushed. These registers correspond to the APCS "full frame".
 
@@ -304,13 +292,14 @@ much faster than manually reissuing a `print` command after each `next` or `step
 
 Use `step` to proceed from here and watch the auto-display'ed stack contents to see what is happening to the values on the stop of the stack as you go in and out of the various function calls:
 
-    (gdb) step
-    (gdb) [RETURN]
-    (gdb) [RETURN]
-    (gdb) [RETURN]
+```console?prompt=(gdb)
+(gdb) step
+(gdb) ⏎
+(gdb) ⏎
+(gdb) ⏎
+```
 
-Hitting just [RETURN], causes `gdb` to repeat the last command (in this
-case `step`).
+The return/enter key(`⏎`) causes `gdb` to repeat the last command (in above sequence, it will `step` 4 times).
 
 Note how the stack changes as you step through the function.
 Which instructions change the value of the register `sp`? Which instructions change the contents of the memory pointed to by `sp`?
@@ -318,11 +307,10 @@ Which instructions change the value of the register `sp`? Which instructions cha
 Use `delete` to delete all breakpoints. Set a breakpoint on
 the `abs` function and re-run the program until you hit this
 breakpoint.  Use the gdb `backtrace` to show the sequence of function
-calls leading to here (as before, pay no mind to the python exception).
+calls leading to here:
 
-```
+```console?prompt=(gdb)
 (gdb) backtrace
-Python Exception <type 'exceptions.ImportError'> No module named frames: 
 #0  abs (v=v@entry=-74) at simple.c:6
 #1  0x000080d8 in diff (a=a@entry=33, b=b@entry=107) at simple.c:31
 #2  0x000080fc in main () at simple.c:38
@@ -333,20 +321,24 @@ from line 31, which in turn was called by `main` from line 38.  The
 numbers on the left refer to the *frame*.  The innermost frame is
 numbered 0, and corresponds to the currently executing function, in this case, `abs`. Frames for caller functions have higher numbers. The `info frame` command prints a summary of the current stack frame:
 
-    (gdb) info frame
-    Stack level 0, frame at 0x7ffffc8:
-    pc = 0x8010 in abs (simple.c:6); saved pc = 0x80d8
-    called by frame at 0x7ffffd8
-    source language c.
-    Arglist at 0x7ffffc8, args: v=v@entry=-74
-    Locals at 0x7ffffc8, Previous frame's sp is 0x7ffffc8
+```console?prompt=(gdb)
+(gdb) info frame
+Stack level 0, frame at 0x7ffffc8:
+pc = 0x8010 in abs (simple.c:6); saved pc = 0x80d8
+called by frame at 0x7ffffd8
+source language c.
+Arglist at 0x7ffffc8, args: v=v@entry=-74
+Locals at 0x7ffffc8, Previous frame's sp is 0x7ffffc8
+```
 
 The `info locals` and `info args` commands give more information about the stack frame's arguments and local variables:
 
-    (gdb) info args
-    v = -74
-    (gdb) info locals
-    result = <optimized out>
+```console?prompt=(gdb)
+(gdb) info args
+v = -74
+(gdb) info locals
+result = <optimized out>
+```
 
 `info locals` reports that `result` is optimized out! This means that
 the compiler decided that it did not need to use the stack to store its value.  Where,
@@ -355,34 +347,36 @@ assembly instructions to figure it out. Knowing assembly is useful.
 
 `gdb` also lets you inspect state of other frames on the call stack.
 
-    (gdb) up
-    #1  0x000080d8 in diff (a=a@entry=33, b=b@entry=107) at simple.c:31
-
+```console?prompt=(gdb)
+(gdb) up
+#1  0x000080d8 in diff (a=a@entry=33, b=b@entry=107) at simple.c:31
+```
 This moves "up" the call stack, to the calling function. In this
-
-    (gdb) info args
-    a = 33
-    b = 107
-    (gdb) info locals
-    No locals.
-
+```console?prompt=(gdb)
+(gdb) info args
+a = 33
+b = 107
+(gdb) info locals
+No locals.
+```
 Now let's go back "down" to the stack frame for `abs`.
 
-    (gdb) down
-    #0  abs (v=v@entry=-74) at simple.c:6
-
+```console?prompt=(gdb)
+(gdb) down
+#0  abs (v=v@entry=-74) at simple.c:6
+```
 Disassemble the code for `abs` and trace its operation instruction
 by instruction.
 
-```
+```console?prompt=(gdb)
 (gdb) disass abs
 Dump of assembler code for function abs:
 => 0x00008010 <+0>:     mov r12, sp
    0x00008014 <+4>:     push {r11, r12, lr, pc}
-   0x00008018 <+8>:     sub r11, r12, #4
-   0x0000801c <+12>:    cmp r0, #0
-   0x00008020 <+16>:    rsblt   r0, r0, #0
-   0x00008024 <+20>:    sub sp, r11, #12
+   0x00008018 <+8>:     sub r11, r12, #4, 0
+   0x0000801c <+12>:    cmp r0, #0, 0
+   0x00008020 <+16>:    rsblt   r0, r0, #0, 0
+   0x00008024 <+20>:    sub sp, r11, #12, 0
    0x00008028 <+24>:    ldm sp, {r11, sp, lr}
    0x0000802c <+28>:    bx  lr
 End of assembler dump.
@@ -396,15 +390,14 @@ The final instruction of `abs` is branch exchange that returns control
 to the caller. Who is the caller of `abs`? What is the address of the 
 instruction in the caller that will be executed when `abs` returns? 
 
-The goal of all this mucking about in gdb is to solidify your understanding the mechanics of function calls and the runtime stack. If you haver further questions, ask your partner, table mates, or the staff to get them resolved now.
+The goal of all this mucking about in gdb is to solidify your understanding the mechanics of function calls and the runtime stack. If you there are portions you don't yet understand, ask your tablemates, or the staff to resolve those questions now.
 
-The `simple.c` program contains a few other functions that you can use to further your understanding of the stack.
+The `simple.c` program contains a few other functions that you can use to further your understanding of the stack.other
 
-The `factorial` function operates recursively. Set a breakpoint on the
-base case `break 14` and run until the breakpoint is hit. Use the
-`backtrace` command to get the lay of the land. Try moving `up` and
+The `factorial` function operates recursively. Set a breakpoint on the `factorial` and it will stop on each recursive call. Continue until you hit the breakpoint for the 5th time and use
+`backtrace` to see contents of stack. Try moving `up` and
 `down` and use `info frame` and `info args` to explore the stack
-frames. 
+frames.  Each invocation has its own copy of the parameter `n`. But obviously those copies can't all be stored in the single `r0` register! Disassemble the `factorial` function and look at the assembly instruction to see what the outer calls are doing with their copy of the argument that allows it be preserved while making another recursive call.
 
 The function `make_array` demonstrates how the stack is used
 for storage of local variables. A local variable of size 32 bits or fewer (i.e. simple int) is likely stored in a register without the overhead of  writing to stack memory. Larger data
@@ -418,23 +411,24 @@ Now introduced to `gdb`, you'll want incorporate it into your development proces
 
 In software development, only a small fraction of your time goes into writing the code, the rest is taken up in testing and debugging. These are important skills to hone and adept use of `gdb` can streamline your efforts by a significant factor. Developing your debugging superpowers will pay off many times over!
 
-At this point, you should be able to answer the first [check in question](checkin).
+At this point, you should be able to answer the first check-in question[^1]
 
 ### 2. Serial communication
 #### 2a) Loopback test
 
 Your laptop communicates over a serial interface when sending a program to the bootloader. To understand what is going on, let's do a simple *loop back* test with your USB-serial adapter.
 
-Insert the USB-serial adapter into a USB port on your laptop and identify the `tty` (teletype) device assigned to the port. A simple way is to have `rpi-install.py` find it for you; the path will be of the form `/dev/your-tty-device-here`.
+Insert the USB-serial adapter into a USB port on your laptop and identify which `tty` (teletype) device is assigned to the port. If you use the command `rpi-run.py` with no arguments; it responds with a device path of the form `/dev/your-tty-device-here`.
 
-    $ rpi-install.py
-    Found serial port: /dev/ttyS3
+```console
+$ rpi-run.py
+Found serial device: /dev/ttyS3
+```
+Disconnect the two jumpers between the RX and TX of the USB-serial adapter and the TX and RX GPIO pins on the Pi.
 
-Disconnect the two jumpers between the RX and TX of the USB-serial adapter and the GPIO pins on the Pi.
+Use a single jumper to connect TX to RX on the USB-serial adapter in loop back mode, as shown in this photo:
 
-Use a single jumper to connect TX to RX on the USB-serial adapter as shown below.
-
-![loop back](images/loopback-spr20.jpg)
+![loop back](images/loopback-spr20.jpg){: .zoom}
 
 In loop back mode,
 the signals sent out on the TX pin are wired straight to the RX pin. Reading from the RX pin will read the characters sent over TX.
@@ -442,11 +436,12 @@ the signals sent out on the TX pin are wired straight to the RX pin. Reading fro
 `screen` is a program used to communicate over a tty device. Open `screen` on your USB-serial tty device and establish a connection 
 at the baud rate of 115200. 
 
-    $ screen /dev/your-tty-device-here 115200
+```console
+$ screen /dev/your-tty-device-here 115200
+```
 
-{% include callout.html type="danger" %}
-On WSL, if screen fails due to a permissions error, first execute as superuser. The command `sudo screen -ls` should respond "No sockets found". After doing that once, you can then use screen normally. 
-</div>
+> __Permission error on WSL?__ On WSL, if screen fails due to a permissions error, first execute as superuser. The command `sudo screen -ls` should respond "No sockets found". After doing that once, you should be able to use screen normally. 
+{: .callout-warning}
 
 When screen opens, it clears your terminal and positions the cursor
 in the upper left corner.
@@ -456,26 +451,27 @@ What happens if you type return on your keyboard?
 To close the connection, type `Control-a` followed by `k`.
 You should see the following message.
 
-    Really kill this window? [y/n]
+```console
+Really kill this window? [y/n]
 
 Type `y` to exit screen and return to the shell.
-
-    [screen is terminating]
-
+[screen is terminating]
+```
 #### 2b) Echo test
 
 Re-connect the TX/RX jumpers between the USB-serial and the Raspberry Pi. Remember the RX of the USB-serial connects to the TX of the Pi, and vice versa (the connections are __not__ TX-TX and RX-RX).
 
 Change to the directory `lab3/code/echo` and build the program. 
 
-The `rpi-install.py` that we use to send a program to the Pi can be invoked with an optional flag to open a communication channel with the running program.  The flag `-s` uses `screen` to create a 2-way channel that allows your laptop to send and receive data with the Pi. The flag `-p` creates a 1-way channel that prints data received from the Pi. Try the -s flag now:
+The `rpi-run.py` that sends a program to the bootloader can optionally open a communication channel with the running program.  The command `rpi-run.py -s` uses `screen` to create a 2-way channel that allows your laptop to send and receive data with the Pi.  Try the `-s` flag now:
 
-    $ rpi-install.py -s echo.bin
+```console
+$ rpi-run.py -s echo.bin
+```
 
-After loading the program on the Pi, your terminal should automatically open `screen`. As you type, your characters should be echoed back to your
-terminal. 
+The commands send the `echo.bin` program to run on the Pi, and then will automatically open `screen` in your terminal. As you type, your characters ar being sent to the program running on the Pi and the output from the Pi is echoed back to your terminal. 
 
-While you continue typing, have your partner gently unplug the jumper from the RX pin on your USB-serial and then re-connect it. What changes? Why does that happen?
+While you continue typing, have your partner gently unplug the jumper from the RX pin on your USB-serial and then re-connect it. What changes? Why does that happen? Answer this check-in question[^2]
 
 Use `Control-a` `k` to exit screen.
 
@@ -483,33 +479,35 @@ Use `Control-a` `k` to exit screen.
 
 Change to the directory `lab3/code/uart-printf`.
 
-    $ cd lab3/code/uart
-    $ ls
-    Makefile  cstart.c  hello.c   memmap    start.s
-
+```console
+$ cd lab3/code/uart-printf
+$ ls
+Makefile  cstart.c  hello.c   memmap    start.s
+```
 Review the code in `hello.c`. This program uses the `uart_putstring` function
 to send characters using the TX pin on the Raspberry Pi. 
 
-The Makefile already includes the `-p` flag when invoking `rpi-install.py`, so `make install` is one-stop shopping to rebuild the program, send to the Pi, and print the received output.
+The command `rpi-run.py -p` creates a 1-way channel that echoes data received from the Pi.  The Makefile already includes the `-p` flag when invoking `rpi-run.py`, so `make run` is one-stop shopping to rebuild the program, send to the Pi, and print the received output.
 
-    % make install
-    Found serial port: /dev/cu.SLAB_USBtoUART
-    Sending `hello.bin` (1128 bytes): .........
-    Successfully sent!
-    hello, laptop
-    hello, laptop
-    hello, laptop
-    hello, laptop
-    hello, laptop
+```console
+$ make run
+Found serial device: /dev/cu.SLAB_USBtoUART
+Sending `hello.bin` (1128 bytes): .........
+Successfully sent!
+hello, laptop
+hello, laptop
+hello, laptop
+hello, laptop
+hello, laptop
 
-    rpi-install.py: received EOT from Pi. Detaching.
-
+rpi-run.py: received EOT from Pi. Detaching.
+```
 This program sends an EOT (end of transmission) character that tells your laptop to close the communication channel. You can also type `Control-c` on your laptop to manually close.
 
-The function `uart_putstring` outputs a constant string, but what is really useful is the ability to output formatted strings, e.g. `printf`. For example, the call `printf("Today is %s %d\n", monthname, daynum)` 
+The function `uart_putstring` can be used to output a strong constant, but what is much more useful is the ability to output formatted strings, e.g. `printf`. For example, the call `printf("Today is %s %d\n", monthname, daynum)` 
 inserts the month string and day number into the output. To learn more about how to use printf, check out the standard library [printf documentation](http://www.tutorialspoint.com/c_standard_library/c_function_printf.htm).
 
-In Assignment 3, you will implement your own version of `printf`.  With a working `printf`, you will be able to report your program state and super-charge your debugging. What a big improvement over trying to communicate everything via blinking LEDs!
+In Assignment 3, you will implement your own version of `printf`.  With a working `printf`, your programs will be able to report on their state and super-charge your debugging. What a big improvement over trying to communicate everything via just two measly LEDs!
 
 Open `hello.c` in your text editor and edit the `main` function to try out `printf`:
 
@@ -521,7 +519,7 @@ Open `hello.c` in your text editor and edit the `main` function to try out `prin
 
 3. Print the value of `*FSEL2` again.
 
-Reset your Pi, and run `make install` again to see your program's output. How does the hex value stored in `FSEL2` change after changing the pin functions?
+Reset your Pi, and run `make run` again to see your program's output. How does the hex value stored in `FSEL2` change after changing the pin functions?
 
 ### 3. C-strings
 
@@ -540,18 +538,22 @@ Compile the program and run it on the Pi. You should get the green light of succ
 
 Now, let's move on the `strcpy` operation. This function copies the characters from one string to another:
 
-    char *strcpy(char *dst, const char *src);
+```c
+char *strcpy(char *dst, const char *src);
+```
 
 Spoiled programmers who work on hosted systems receive `strcpy` as part
 of the standard library, but we must implement it ourselves for the Pi.
 
 Functions in the standard library each have a man page that documents the function's use and behavior. Bring up the man page for `strcpy`.
 
-    $ man strcpy
+```console
+$ man strcpy
+```
 
-Try implementing `strcpy` yourself. Does `strcpy` copy the null terminator or only the non-null characters?  If you're not sure, read the man page to confirm the expected behavior.
+Read the man page and then try implementing `strcpy` yourself. Does `strcpy` copy only the non-null characters or is the terminator included?  If you're not sure, read the man page to confirm the expected behavior.
 
-When you are ready to test your `strcpy`, review the test cases in the `test_strcpy` function. Uncomment the call to `test_strcpy` in `main()`. Use `make install` to rebuild the program and run it on the Pi.
+When you are ready to test your `strcpy`, review the test cases in the `test_strcpy` function. Uncomment the call to `test_strcpy` in `main()`. Use `make run` to rebuild the program and run it on the Pi.
 
 If you get the red flash of doom, dig in to find out what's gone wrong
 and work to resolve the issue. Don't move on until all
@@ -563,52 +565,52 @@ You can also test a program by running within gdb in simulation mode. Let's try 
 
 #### 4a) Debug strlen
 
-Edit `strlen` to intentionally plant a bug, such as changing the function to always return `7`. This will cause test failures in `test_strlen`. Use `make install` to build the program and run on the Pi and you get the flashing red LED that indicates a failed assert.
+Edit `strlen` to intentionally plant a bug, such as changing the function to always return `7`. This will cause test failures in `test_strlen`. Use `make run` to build the program and run on the Pi and you get the flashing red LED that indicates a failed assert.
 
 Let's learn how that failed assert is presented under the debugger. Get the buggy program under gdb and run it. There is no flashing red light; the simulator is not talking to your Pi nor its peripherals. Your Pi doesn't even need to be connected! 
 
-What do you see in gdb? Not much; the program appears to be stuck. Type `Control-c` to interrupt the program and use `backtrace` to see where the program is stopped.
+What do you see in gdb? There is some output about a failed assertion and then the program appears to be stuck. Type `Control-c` to interrupt the program and use `backtrace` to see where the program is stopped.
 
-```^C
+```console?prompt=(gdb)
+File cstrings.c, line 32: Assertion 'strlen("green") == 5' failed.
+^C
 Program received signal SIGINT, Interrupt.
 timer_get_ticks () at timer.c:10
 10  timer.c: No such file or directory.
 (gdb) backtrace
 #0  timer_get_ticks () at timer.c:10
-#1  0x000084b0 in timer_delay_us (usecs=usecs@entry=200000) at timer.c:17
-#2  0x000084f8 in timer_delay_ms (msecs=msecs@entry=200) at timer.c:22
-#3  0x0000841c in pi_abort () at pi.c:40
-#4  0x00008078 in test_strlen () at cstrings.c:30
-#5  0x0000822c in main () at cstrings.c:80
+#1  0x000084c0 in timer_delay_us (usecs=usecs@entry=200000) at timer.c:15
+#2  0x00008510 in timer_delay_ms (msecs=msecs@entry=200) at timer.c:29
+#3  0x00008558 in pi_abort () at pi.c:38
+#4  0x000080ac in test_strlen () at cstrings.c:32
+#5  0x00008288 in main () at cstrings.c:84
 ```
 
-A-ha! When an assert fails, it calls `pi_abort` to flash the red light. The above backtrace tells you that the program is waiting in the delay loop within `pi_abort`.  Given the simulator does not emulate the timer or GPIO peripherals, `pi_abort` behaves as a no-action infinite loop. By looking further into the backtrace, we learn that the failed assertion occurred on line 30 of the `cstrings.c` file. Use `list` to see that code now:
+A-ha! When an assert fails, it calls `pi_abort` to flash the red light. The above backtrace tells you that the program is waiting in the delay loop within `pi_abort`.  Given the simulator does not emulate the timer or GPIO peripherals, `pi_abort` behaves as a no-action infinite loop. By looking further into the backtrace, we learn that the failed assertion occurred on line 32 of the `cstrings.c` file. Use `list` to see that code now:
 
-```
+```console?prompt=(gdb)
 (gdb) list cstrings.c:30
-25 
-26 void test_strlen(void)
-27 {
-28     char *fruit = "watermelon";
-29 
-30     assert(strlen("green") == 5);
-31     assert(strlen("") ==  0);
-32     assert(strlen(fruit) == 2 + strlen(fruit + 2));
-33 }
-34 
+27 
+28 void test_strlen(void)
+29 {
+30     char *fruit = "watermelon";
+31 
+32     assert(strlen("green") == 5);
+33     assert(strlen("") ==  0);
+34     assert(strlen(fruit) == 2 + strlen(fruit + 2));
 ```
 
 This allows us to pinpoint exactly which assert failed (rather than have to comment-in-and-out tests one by one to find it). Hooray for gdb!
 
 Restore `strlen` to its correct implementation, rebuild and run again under the debugger. All tests should pass. As expected, there is no green light from the simulator, but once again the program appears stuck. Type `Control-c` to interrupt the program and use `backtrace` to see what's going on. What evidence confirms that the program successfully ran to completion? 
 
-{% include callout.html type="warning" %}
-__Tip__: Any time your program is executing, typing `Control-c` will interrupt the program and return control to the debugger. `backtrace` will show where the program was executing when it was interrupted. 
+
+> __Tip__ Typing `Control-c` will interrupt the executing program and return control to the debugger. `backtrace` will show where the program was executing when it was interrupted. 
+{: .callout-info}
 
 Learn to recognize these two common situations: 
 + a successful run to completion that is waiting in `hang`
 + a failed assert in `pi_abort` attempting to flash a non-existent red LED
-</div>
 
 #### 4b) Debug bogus_strlen_calls
 
@@ -627,7 +629,7 @@ to a single character. Furthermore the address might not have a char pointee  at
 Uncomment the call to `stress_test_strlen` in `main()`. Rebuild the program and run it under gdb. Single step through the call to
 `bogus_strlen_calls` and print the value returned from each of the
 bad calls. Is the result what you anticipated?  What did you learn from this about the
-observed consequences of reading uninitialized or invalid memory?
+observed consequences of reading uninitialized or invalid memory? Confirm you understanding with this check-in question[^3]
 
 #### 4c) Debug sketchy_strcpy_call
 
@@ -653,13 +655,22 @@ Change to the directory `lab3/code/simulator` directory and review the program i
 
 Build the program using `make`. You should get warnings from the compiler about the use of uninitialized variables.
 
-Use `make install` to run the program on the Raspberry Pi. Does the output printed by the program match what you predicted earlier?  Use `make install` to run the program again. Is the output printed the same as the previous run?
+Use `make run` to run the program on the Raspberry Pi. Does the output printed by the program match what you predicted earlier?  Use `make run` to run the program again. Is the output printed the same as the previous run?
 
 Now use gdb on the `buggy.elf` program.  Run the program under gdb. When running under the simulator, the program does have the same output that you observed when running on the Pi. Why is it different?
 
-Type `Control-c` to stop the program. Without exiting gdb, use `run` to run the program for a second time. How does this output compare to the previous run? Run a few more times in gdb until you understand the pattern. What have you learned about how the simulator handles the state of memory between runs? How does this compare to what happens to the state of memory when you reset the actual Pi and re-run the program?
+Type `Control-c` to stop the program. Without exiting gdb, use `run` to run the program for a second time. How does this output compare to the previous run? Run a few more times in gdb until you understand the pattern. What have you learned about how the simulator handles the state of memory between runs? How does this compare to what happens to the state of memory when you reset the actual Pi and re-run the program? 
+
+The gdb simulator is a powerful addition to your toolbox, but it is important to understand its limitations and differences from an actual Pi. [^4]
 
 ## Check in with TA
 
-Review the [check-in questions](checkin) to test your understanding of the
-topics from the lab and call over the TA to check-in on your progress before leaving lab.
+Answer these questions that probe on topics from the lab and review your answers with the TA to confirm your understanding.
+
+[^1]: Explain how the `lr` register is used as part of making a function call. Which instruction writes to the `lr` register? Which instruction reads from it? What commands could you use in `gdb` to observe the changes to the `lr` register during execution of a function call?
+
+[^2]: Why is it necessary to plug in both `TX` and `RX` for the echo program to work correctly?
+
+[^3]: On a hosted system, executing an incorrect call to `strlen` (e.g. argument is an invalid address or unterminated string) can result in a runtime error (crash/halt). But when running bare metal on the Pi, every call to `strlen` (whether well-formed or not) will complete "successfully" and return a value. Explain the difference in behavior. What will be the return value for an erroneous call?
+
+[^4]: Running a program under the gdb simulator is not be a perfect match to running on the actual Pi. A particularly frustrating situation can come from a program that exhibits a bug running on the Pi, but appears to run correctly under the simulator or work on a first run in gdb but not a subsequent. What underlying difference(s) between the simulator and real thing might contribute to this kind of inconsistency?

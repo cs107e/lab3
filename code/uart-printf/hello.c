@@ -14,6 +14,6 @@ void main (void)
         timer_delay(1);
     }
     printf("We %s printf!\n", "<3");
-    
-    uart_putchar(EOT); // not strictly necessary, but signals to rpi-install that program is done
+
+    uart_putchar(EOT); // not strictly necessary, but signals to rpi-run that program is done
 }
